@@ -1,0 +1,5 @@
+/*
+  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://fonts.googleapis.com https://fonts.gstatic.com; connect-src *; frame-src *; popup-allow-any: true
+  X-Frame-Options: ALLOWALL
+  X-Content-Type-Options: nosniff
+  Access-Control-Allow-Origin: *
