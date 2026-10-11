@@ -1,495 +1,513 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <title>Auto Clicker</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Auto Clicker Bot</title>
 
+  <!-- Telegram Mini App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
     :root {
-      --bg:      #0a0a0a;
-      --surf:    #141414;
-      --border:  #1f1f1f;
-      --accent:  #3b82f6;
-      --green:   #22c55e;
-      --text:    #f0f0f0;
-      --muted:   #555;
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.12);
+      --accent-glow: rgba(0, 229, 255, 0.35);
+      --text: #e8e8e8;
+      --muted: #5a5a5a;
+      --danger: #ff4d4d;
+      --success: #00e5a0;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     html, body {
       height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: var(--font);
       overflow: hidden;
     }
 
-    /* ═══════════════════════════════
-       IFRAME OVERLAY — link এখানে লোড হবে
-    ═══════════════════════════════ */
-    #iframeOverlay {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: #000;
-      display: flex;
-      flex-direction: column;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s;
-    }
-
-    #iframeOverlay.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    #overlayBar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: #111;
-      border-bottom: 1px solid #222;
-      flex-shrink: 0;
-    }
-
-    #overlayUrl {
-      font-size: 11px;
-      color: #777;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      flex: 1;
-    }
-
-    #closeTimer {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--green);
-      margin-left: 12px;
-      white-space: nowrap;
-    }
-
-    #siteFrame {
-      width: 100%;
-      flex: 1;
-      border: none;
-      background: #fff;
-    }
-
-    /* ═══════════════════════════════
-       MAIN UI
-    ═══════════════════════════════ */
     .app {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      padding: 20px;
-      gap: 24px;
+      padding: 24px;
+      gap: 32px;
     }
 
-    /* ring */
-    .ring-wrap {
+    /* ── Status Indicator ── */
+    .status-ring {
       position: relative;
-      width: 130px;
-      height: 130px;
+      width: 120px;
+      height: 120px;
     }
-    .ring-wrap svg {
+
+    .status-ring svg {
       position: absolute;
-      inset: 0;
+      top: 0; left: 0;
       transform: rotate(-90deg);
     }
-    .r-track  { fill:none; stroke:#1e1e1e; stroke-width:5; }
-    .r-fill   { fill:none; stroke:var(--accent); stroke-width:5;
-                stroke-linecap:round;
-                stroke-dasharray:345.4;
-                stroke-dashoffset:345.4;
-                transition: stroke-dashoffset .15s linear, stroke .3s; }
-    .r-fill.open { stroke: var(--green); }
 
-    .ring-inner {
-      position:absolute; inset:0;
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center; gap:1px;
+    .ring-track {
+      fill: none;
+      stroke: var(--surface);
+      stroke-width: 4;
     }
-    #timerSec {
-      font-size:32px; font-weight:700; line-height:1;
+
+    .ring-progress {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 314;
+      stroke-dashoffset: 314;
+      transition: stroke-dashoffset 0.1s linear;
+      filter: drop-shadow(0 0 6px var(--accent-glow));
+    }
+
+    .ring-progress.open-phase {
+      stroke: var(--success);
+      filter: drop-shadow(0 0 6px rgba(0,229,160,0.4));
+    }
+
+    .status-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .status-count {
+      font-size: 28px;
+      font-weight: 700;
       color: var(--accent);
-      transition: color .3s;
-    }
-    #timerSec.open { color: var(--green); }
-    #timerWord {
-      font-size:10px; color:var(--muted);
-      text-transform:uppercase; letter-spacing:1px;
+      line-height: 1;
+      letter-spacing: -1px;
+      transition: color 0.3s;
     }
 
-    /* card */
-    .card {
-      background: var(--surf);
-      border: 1px solid var(--border);
+    .status-count.open-phase { color: var(--success); }
+
+    .status-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ── Info Card ── */
+    .info-card {
+      background: var(--surface);
+      border: 1px solid #222;
       border-radius: 16px;
-      padding: 18px 20px;
+      padding: 20px 24px;
       width: 100%;
-      max-width: 320px;
+      max-width: 340px;
     }
 
-    .pill {
-      display:inline-flex; align-items:center; gap:6px;
-      font-size:11px; font-weight:600;
-      padding: 3px 10px;
-      border-radius:20px;
-      background: rgba(59,130,246,.12);
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--accent-dim);
       color: var(--accent);
-      margin-bottom:10px;
-      transition: background .3s, color .3s;
+      margin-bottom: 12px;
+      transition: all 0.3s;
     }
-    .pill.open {
-      background: rgba(34,197,94,.12);
-      color: var(--green);
-    }
-    .pill-dot {
-      width:6px; height:6px; border-radius:50%;
-      background:currentColor;
-      animation: blink 1s infinite;
-    }
-    @keyframes blink { 50%{opacity:.2} }
 
-    #cardTitle { font-size:14px; font-weight:600; margin-bottom:3px; }
-    #cardSub   { font-size:12px; color:var(--muted); }
+    .phase-badge.open {
+      background: rgba(0, 229, 160, 0.12);
+      color: var(--success);
+    }
 
-    /* button */
+    .phase-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .phase-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .phase-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Main Button ── */
     .btn-wrap {
-      width:100%; max-width:320px; position:relative;
+      position: relative;
+      width: 100%;
+      max-width: 340px;
     }
+
+    .glow-ring {
+      position: absolute;
+      inset: -3px;
+      border-radius: 17px;
+      background: conic-gradient(var(--accent), transparent, var(--accent));
+      opacity: 0;
+      animation: spin 3s linear infinite;
+      transition: opacity 0.3s;
+    }
+
+    .glow-ring.active {
+      opacity: 0.4;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     #mainBtn {
-      width:100%; padding:16px;
-      border:none; border-radius:13px;
+      position: relative;
+      width: 100%;
+      padding: 17px;
+      border-radius: 14px;
+      border: none;
       background: var(--accent);
-      color:#fff; font-family:inherit;
-      font-size:15px; font-weight:700;
-      cursor:pointer;
-      box-shadow: 0 0 18px rgba(59,130,246,.35);
-      transition: transform .1s, box-shadow .2s, background .3s;
-      outline:none;
-    }
-    #mainBtn:active { transform:scale(.96); }
-    #mainBtn.flash  { animation: btnflash .25s ease; }
-    @keyframes btnflash {
-      0%  { transform:scale(1); }
-      40% { transform:scale(.93); box-shadow:0 0 35px rgba(59,130,246,.6); }
-      100%{ transform:scale(1); }
+      color: #000;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: transform 0.1s, box-shadow 0.2s;
+      z-index: 1;
+      box-shadow: 0 0 20px var(--accent-glow);
+      outline: none;
     }
 
-    /* stats */
-    .stats {
-      display:flex; gap:10px;
-      width:100%; max-width:320px;
-    }
-    .stat {
-      flex:1; background:var(--surf);
-      border:1px solid var(--border);
-      border-radius:12px; padding:12px 8px;
-      text-align:center;
-    }
-    .s-num { font-size:20px; font-weight:700; color:var(--accent); }
-    .s-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.7px; margin-top:2px; }
-
-    /* live dot */
-    .live {
-      display:flex; align-items:center; gap:7px;
-      font-size:11px; color:var(--muted);
-    }
-    .live-dot {
-      width:7px; height:7px; border-radius:50%;
-      background:var(--green);
-      box-shadow:0 0 7px var(--green);
-      animation:blink 1.4s infinite;
+    #mainBtn:active {
+      transform: scale(0.97);
     }
 
-    #urlLine {
-      font-size:10px; color:#333;
-      max-width:300px;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      text-align:center;
+    #mainBtn.clicking {
+      animation: btnPulse 0.3s ease;
+    }
+
+    @keyframes btnPulse {
+      0%   { transform: scale(1); box-shadow: 0 0 20px var(--accent-glow); }
+      40%  { transform: scale(0.94); box-shadow: 0 0 40px var(--accent-glow); }
+      100% { transform: scale(1); box-shadow: 0 0 20px var(--accent-glow); }
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .stat-box {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* ── Running badge ── */
+    .running-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .running-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* ── URL display ── */
+    .url-display {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
+  <div class="app">
 
-<!-- ══════════════════════════════
-     IFRAME OVERLAY
-══════════════════════════════ -->
-<div id="iframeOverlay">
-  <div id="overlayBar">
-    <span id="overlayUrl"></span>
-    <span id="closeTimer">closing in 10s</span>
-  </div>
-  <iframe id="siteFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" loading="lazy"></iframe>
-</div>
-
-<!-- ══════════════════════════════
-     MAIN APP
-══════════════════════════════ -->
-<div class="app">
-
-  <!-- Ring Timer -->
-  <div class="ring-wrap">
-    <svg viewBox="0 0 120 120" width="130" height="130">
-      <circle class="r-track" cx="60" cy="60" r="55"/>
-      <circle class="r-fill"  cx="60" cy="60" r="55" id="ringFill"/>
-    </svg>
-    <div class="ring-inner">
-      <span id="timerSec">5</span>
-      <span id="timerWord">wait</span>
+    <!-- Timer Ring -->
+    <div class="status-ring">
+      <svg viewBox="0 0 110 110" width="120" height="120">
+        <circle class="ring-track" cx="55" cy="55" r="50"/>
+        <circle class="ring-progress" id="ringProgress" cx="55" cy="55" r="50"/>
+      </svg>
+      <div class="status-center">
+        <span class="status-count" id="timerCount">5</span>
+        <span class="status-label" id="timerLabel">wait</span>
+      </div>
     </div>
-  </div>
 
-  <!-- Card -->
-  <div class="card">
-    <div class="pill" id="pill">
-      <span class="pill-dot"></span>
-      <span id="pillTxt">Waiting...</span>
+    <!-- Phase Info Card -->
+    <div class="info-card">
+      <div class="phase-badge" id="phaseBadge">
+        <span class="phase-dot"></span>
+        <span id="phaseText">Waiting to click</span>
+      </div>
+      <div class="phase-text" id="phaseMain">Link opens in 5s</div>
+      <div class="phase-sub" id="phaseSub">Auto-click loop is running continuously</div>
     </div>
-    <div id="cardTitle">Link opens in 5s</div>
-    <div id="cardSub">Loop চলছে — app খোলা রাখো</div>
+
+    <!-- Main Button -->
+    <div class="btn-wrap">
+      <div class="glow-ring active" id="glowRing"></div>
+      <button id="mainBtn">🔗 Open Link</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num" id="clickCount">0</div>
+        <div class="stat-lbl">Clicks</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="openCount">0</div>
+        <div class="stat-lbl">Opens</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="cycleCount">0</div>
+        <div class="stat-lbl">Cycles</div>
+      </div>
+    </div>
+
+    <!-- Running indicator -->
+    <div class="running-badge">
+      <div class="running-dot"></div>
+      Auto-loop running — keep this app open
+    </div>
+
+    <div class="url-display" id="urlDisplay">No URL configured</div>
+
   </div>
 
-  <!-- Button -->
-  <div class="btn-wrap">
-    <button id="mainBtn">🔗 Open Link</button>
-  </div>
+  <script>
+    // ─────────────────────────────────────────────
+    //  CONFIG — change the URL below to your link
+    // ─────────────────────────────────────────────
+    const TARGET_URL    = 'https://google.com';   // ← এখানে তোমার link দাও
+    const WAIT_BEFORE   = 5000;  // ms — click এর আগে wait (5s)
+    const LINK_OPEN_DUR = 10000; // ms — link কতক্ষণ খোলা থাকবে (10s)
 
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat"><div class="s-num" id="sClicks">0</div><div class="s-lbl">Clicks</div></div>
-    <div class="stat"><div class="s-num" id="sOpens">0</div><div class="s-lbl">Opens</div></div>
-    <div class="stat"><div class="s-num" id="sCycles">0</div><div class="s-lbl">Cycles</div></div>
-  </div>
-
-  <div class="live"><div class="live-dot"></div>Auto-loop active</div>
-  <div id="urlLine">—</div>
-</div>
-
-<script>
-/* ════════════════════════════════════════════════
-   CONFIG
-════════════════════════════════════════════════ */
-const TARGET_URL    = 'https://jp.duskedaruac.com/iFsO2lPY2YnG3LcNc/155770'; // ← তোমার লিংক এখানে দাও
-const WAIT_MS       = 5000;   // 5 সেকেন্ড অপেক্ষা
-const OPEN_MS       = 10000;  // 10 সেকেন্ড খোলা থাকবে
-const CIRC          = 2 * Math.PI * 55; // 345.4
-
-/* ════════════════════════════════════════════════
-   TELEGRAM INIT
-════════════════════════════════════════════════ */
-const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-  try { tg.setHeaderColor('#0a0a0a'); } catch(e){}
-  try { tg.setBackgroundColor('#0a0a0a'); } catch(e){}
-}
-
-/* ════════════════════════════════════════════════
-   DOM
-════════════════════════════════════════════════ */
-const ringFill    = document.getElementById('ringFill');
-const timerSec    = document.getElementById('timerSec');
-const timerWord   = document.getElementById('timerWord');
-const pill        = document.getElementById('pill');
-const pillTxt     = document.getElementById('pillTxt');
-const cardTitle   = document.getElementById('cardTitle');
-const cardSub     = document.getElementById('cardSub');
-const mainBtn     = document.getElementById('mainBtn');
-const sClicks     = document.getElementById('sClicks');
-const sOpens      = document.getElementById('sOpens');
-const sCycles     = document.getElementById('sCycles');
-const urlLine     = document.getElementById('urlLine');
-
-// iframe overlay
-const overlay     = document.getElementById('iframeOverlay');
-const siteFrame   = document.getElementById('siteFrame');
-const overlayUrl  = document.getElementById('overlayUrl');
-const closeTimerEl= document.getElementById('closeTimer');
-
-urlLine.textContent = TARGET_URL;
-
-/* ════════════════════════════════════════════════
-   STATE
-════════════════════════════════════════════════ */
-let clicks = 0, opens = 0, cycles = 0;
-let phase = 'wait';         // 'wait' | 'open'
-let phaseStart = Date.now(); // real timestamp — interval drift এ কোনো সমস্যা নেই
-let loopTimer  = null;
-let iframeOpen = false;
-
-/* ════════════════════════════════════════════════
-   RING + UI UPDATE
-════════════════════════════════════════════════ */
-function setRing(progress, isOpen) {
-  const offset = CIRC * (1 - Math.min(progress, 1));
-  ringFill.style.strokeDashoffset = offset;
-  ringFill.classList.toggle('open', isOpen);
-  timerSec.classList.toggle('open', isOpen);
-}
-
-function showWaitUI(secLeft) {
-  timerSec.textContent  = secLeft;
-  timerWord.textContent = 'wait';
-  pill.className        = 'pill';
-  pillTxt.textContent   = 'Waiting to click';
-  cardTitle.textContent = `Link opens in ${secLeft}s`;
-  cardSub.textContent   = 'Loop চলছে — app খোলা রাখো';
-}
-
-function showOpenUI(secLeft) {
-  timerSec.textContent  = secLeft;
-  timerWord.textContent = 'open';
-  pill.className        = 'pill open';
-  pillTxt.textContent   = 'Link is open';
-  cardTitle.textContent = `Closing in ${secLeft}s`;
-  cardSub.textContent   = 'Auto-close হবে, কিছু করা লাগবে না';
-  closeTimerEl.textContent = `closing in ${secLeft}s`;
-}
-
-function updateStats() {
-  sClicks.textContent = clicks;
-  sOpens.textContent  = opens;
-  sCycles.textContent = cycles;
-}
-
-/* ════════════════════════════════════════════════
-   IFRAME OPEN / CLOSE
-   — window.open() Telegram এ block হয়
-   — tg.openLink() close করা যায় না
-   — iframe ব্যবহারে দুটো সমস্যাই নেই
-════════════════════════════════════════════════ */
-function openIframe() {
-  if (iframeOpen) return;
-  iframeOpen = true;
-  overlayUrl.textContent = TARGET_URL;
-  siteFrame.src = TARGET_URL;
-  overlay.classList.add('visible');
-}
-
-function closeIframe() {
-  if (!iframeOpen) return;
-  iframeOpen = false;
-  siteFrame.src = 'about:blank'; // content clear করে
-  overlay.classList.remove('visible');
-}
-
-/* ════════════════════════════════════════════════
-   CLICK ACTION
-════════════════════════════════════════════════ */
-function doClick() {
-  clicks++;
-  opens++;
-  updateStats();
-
-  mainBtn.classList.add('flash');
-  setTimeout(() => mainBtn.classList.remove('flash'), 300);
-
-  try { tg?.HapticFeedback?.impactOccurred('medium'); } catch(e){}
-
-  openIframe();
-}
-
-/* ════════════════════════════════════════════════
-   MAIN LOOP — Date.now() দিয়ে real time track
-   setInterval শুধু UI update এর জন্য, timing এর জন্য না
-════════════════════════════════════════════════ */
-function tick() {
-  const now     = Date.now();
-  const elapsed = now - phaseStart;
-
-  if (phase === 'wait') {
-    const remaining = WAIT_MS - elapsed;
-    const secLeft   = Math.max(0, Math.ceil(remaining / 1000));
-    const progress  = elapsed / WAIT_MS;
-
-    setRing(progress, false);
-    showWaitUI(secLeft);
-
-    if (elapsed >= WAIT_MS) {
-      // ── WAIT শেষ → CLICK + OPEN ──
-      phase      = 'open';
-      phaseStart = Date.now();
-      doClick();
+    // ── Telegram WebApp init ──
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor('#0d0d0d');
+      tg.setBackgroundColor('#0d0d0d');
     }
 
-  } else { // phase === 'open'
-    const remaining = OPEN_MS - elapsed;
-    const secLeft   = Math.max(0, Math.ceil(remaining / 1000));
-    const progress  = elapsed / OPEN_MS;
+    // ── DOM refs ──
+    const btn        = document.getElementById('mainBtn');
+    const ringProg   = document.getElementById('ringProgress');
+    const timerCount = document.getElementById('timerCount');
+    const timerLabel = document.getElementById('timerLabel');
+    const phaseBadge = document.getElementById('phaseBadge');
+    const phaseText  = document.getElementById('phaseText');
+    const phaseMain  = document.getElementById('phaseMain');
+    const phaseSub   = document.getElementById('phaseSub');
+    const clickCount = document.getElementById('clickCount');
+    const openCount  = document.getElementById('openCount');
+    const cycleCount = document.getElementById('cycleCount');
+    const urlDisplay = document.getElementById('urlDisplay');
+    const statusCount= document.getElementById('.status-count') || timerCount;
 
-    setRing(progress, true);
-    showOpenUI(secLeft);
+    urlDisplay.textContent = TARGET_URL;
 
-    if (elapsed >= OPEN_MS) {
-      // ── OPEN শেষ → CLOSE + WAIT ──
-      closeIframe();
-      cycles++;
+    // ── State ──
+    let clicks = 0, opens = 0, cycles = 0;
+    let currentWindow = null;
+    let phase = 'wait'; // 'wait' | 'open'
+    let elapsed = 0;
+    let tickInterval = null;
+
+    const CIRCUMFERENCE = 2 * Math.PI * 50; // 314.16
+
+    // ── helpers ──
+    function setRing(progress, isOpen) {
+      const offset = CIRCUMFERENCE * (1 - progress);
+      ringProg.style.strokeDashoffset = offset;
+      ringProg.classList.toggle('open-phase', isOpen);
+    }
+
+    function updateStats() {
+      clickCount.textContent = clicks;
+      openCount.textContent  = opens;
+      cycleCount.textContent = cycles;
+    }
+
+    function setPhaseWait(secLeft) {
+      timerCount.textContent = secLeft;
+      timerCount.classList.remove('open-phase');
+      timerLabel.textContent = 'wait';
+      phaseBadge.className   = 'phase-badge';
+      phaseText.textContent  = 'Waiting to click';
+      phaseMain.textContent  = `Link opens in ${secLeft}s`;
+    }
+
+    function setPhaseOpen(secLeft) {
+      timerCount.textContent = secLeft;
+      timerCount.classList.add('open-phase');
+      timerLabel.textContent = 'open';
+      phaseBadge.className   = 'phase-badge open';
+      phaseText.textContent  = 'Link is open';
+      phaseMain.textContent  = `Closing in ${secLeft}s`;
+    }
+
+    // ── Click the button ──
+    function clickButton() {
+      clicks++;
       updateStats();
-      phase      = 'wait';
-      phaseStart = Date.now();
-      setRing(0, false);
+      btn.classList.add('clicking');
+      setTimeout(() => btn.classList.remove('clicking'), 350);
+
+      // haptic feedback
+      tg?.HapticFeedback?.impactOccurred('medium');
+
+      // open link
+      openLink();
     }
-  }
-}
 
-function startLoop() {
-  phaseStart = Date.now();
-  phase      = 'wait';
-  if (loopTimer) clearInterval(loopTimer);
-  loopTimer  = setInterval(tick, 200); // প্রতি 200ms UI update
-  tick(); // তাৎক্ষণিক প্রথম run
-}
+    function openLink() {
+      opens++;
+      updateStats();
 
-/* ════════════════════════════════════════════════
-   VISIBILITY CHANGE — app foreground এ ফিরলে resync
-════════════════════════════════════════════════ */
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    // hidden থাকার সময় interval pause ছিল
-    // phaseStart অপরিবর্তিত তাই elapsed ঠিকমতো calculate হবে
-    // শুধু interval restart করলেই হয়
-    if (loopTimer) clearInterval(loopTimer);
-    loopTimer = setInterval(tick, 200);
-    tick();
-  }
-});
+      // close any old window
+      if (currentWindow && !currentWindow.closed) {
+        try { currentWindow.close(); } catch(e) {}
+      }
 
-/* ════════════════════════════════════════════════
-   MANUAL BUTTON CLICK
-════════════════════════════════════════════════ */
-mainBtn.addEventListener('click', () => {
-  clicks++;
-  updateStats();
-  mainBtn.classList.add('flash');
-  setTimeout(() => mainBtn.classList.remove('flash'), 300);
-  try { tg?.HapticFeedback?.impactOccurred('medium'); } catch(e){}
+      // try Telegram's openLink first, fallback to window.open
+      if (tg?.openLink) {
+        tg.openLink(TARGET_URL);
+      } else {
+        currentWindow = window.open(TARGET_URL, '_blank');
+      }
+    }
 
-  if (iframeOpen) {
-    closeIframe();
-  } else {
-    openIframe();
-    opens++;
-    updateStats();
-  }
-});
+    function closeLink() {
+      if (currentWindow && !currentWindow.closed) {
+        try { currentWindow.close(); } catch(e) {}
+      }
+      currentWindow = null;
+    }
 
-/* ════════════════════════════════════════════════
-   START
-════════════════════════════════════════════════ */
-startLoop();
-</script>
+    // ── Main loop (runs every 100ms for smooth ring) ──
+    function startLoop() {
+      elapsed = 0;
+      phase   = 'wait';
+
+      tickInterval = setInterval(() => {
+        elapsed += 100;
+
+        if (phase === 'wait') {
+          const progress = elapsed / WAIT_BEFORE;
+          const secLeft  = Math.ceil((WAIT_BEFORE - elapsed) / 1000);
+          setRing(progress, false);
+          setPhaseWait(Math.max(0, secLeft));
+
+          if (elapsed >= WAIT_BEFORE) {
+            // ── trigger click ──
+            clickButton();
+            phase   = 'open';
+            elapsed = 0;
+          }
+
+        } else if (phase === 'open') {
+          const progress = elapsed / LINK_OPEN_DUR;
+          const secLeft  = Math.ceil((LINK_OPEN_DUR - elapsed) / 1000);
+          setRing(progress, true);
+          setPhaseOpen(Math.max(0, secLeft));
+
+          if (elapsed >= LINK_OPEN_DUR) {
+            // ── close link, restart cycle ──
+            closeLink();
+            cycles++;
+            updateStats();
+            phase   = 'wait';
+            elapsed = 0;
+            setRing(0, false);
+          }
+        }
+
+      }, 100);
+    }
+
+    // ── Manual button click ──
+    btn.addEventListener('click', () => {
+      clicks++;
+      updateStats();
+      btn.classList.add('clicking');
+      setTimeout(() => btn.classList.remove('clicking'), 350);
+      tg?.HapticFeedback?.impactOccurred('medium');
+      openLink();
+    });
+
+    // ── Start ──
+    startLoop();
+  </script>
 </body>
-</html>
+  </html>
